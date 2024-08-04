@@ -9,7 +9,7 @@
 #include <errno.h>
 #include "common.h"
 
-char __license[] SEC("license") = "GPL";
+char __license[] SEC("license") = "Dual BSD/GPL";
 
 #define IPv6_LOCAL 0x8000000
 

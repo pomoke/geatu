@@ -9,7 +9,6 @@ Geatu tags files. Path-based approach may be an useful replacement for filesyste
 
 ### Sensitivity
 Sensitivity is a signed integer.
-Unlike serious MLP implementations, .
 
 ### Rules
 In Geatu, rules map a given tag to other tags for matching permissions.
@@ -42,11 +41,12 @@ Useful for security-related libraries.
 This section also applies files unable to append xattr.
 
 ### `localhost` protection
-When a process bind to `localhost`, its security data are kept for check.
-On connecting, the security tag of client will be matched against it.
-Administrator may choose to match ids, sensitivity level or/and Geatu tags.
+When a process bind to `localhost`, its security data are kept.
+On connecting, the peer's credential will be checked.
 
-Localhost is `127.0.0.0/8` and `::1`.
+Administrator may choose to match ids, sensitivity level or/and Geatu tags (TODO). 
+
+`localhost` refers to `127.0.0.0/8` and `::1`.
 
 ### Explicit rules
 This means storing paths (preferably with globs) and policys in global context.
