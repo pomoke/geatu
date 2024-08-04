@@ -1,0 +1,14 @@
+[package]
+name = "new"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+libbpf-rs = "0.23.3"
+
+[build-dependencies]
+libbpf-cargo = "0.23"
+
+[package.metadata.libbpf]
+prog_dir = "bpf"  # default: <manifest_directory>/src/bpf
+target_dir = "artifact" # default: <target_dir>/bpf
