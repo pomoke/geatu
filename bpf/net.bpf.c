@@ -77,11 +77,14 @@ int BPF_PROG(socket_bind,struct socket *sock, struct sockaddr *address, int addr
                 .addr = ip4,
                 .port = port,
             };
-            bpf_map_update_elem(&localhostmap, &key, &value, 0);
-            // Track for inode item.
-            struct inode *inode = sock->file->f_inode;
-            bpf_map_update_elem(&inode_addr_map, &inode, &key, 0);
-            bpf_printk("geatu-net: localhost:%d in.", key.port);
+            int ret = bpf_map_update_elem(&localhostmap, &key, &value, BPF_NOEXIST);
+            if (!ret)
+            {
+                // Track for inode item.
+                struct inode *inode = sock->file->f_inode;
+                bpf_map_update_elem(&inode_addr_map, &inode, &key, 0);
+                bpf_printk("geatu-net: localhost:%d in.", key.port);
+            }
         }
     }
     else if (type == AF_INET6)
@@ -93,17 +96,24 @@ int BPF_PROG(socket_bind,struct socket *sock, struct sockaddr *address, int addr
         bpf_core_read(&a3, 4, a->sin6_addr.in6_u.u6_addr32 + 2);
         bpf_core_read(&a4, 4, a->sin6_addr.in6_u.u6_addr32 + 3);
         if (
-            a1 == 1 &&
+            a1 == 0 &&
             a2 == 0 &&
             a3 == 0 &&
-            a4 == 0 
+            a4 == bpf_htonl(1) 
         ) {
             struct localhost_h key = {
                 .addr = IPv6_LOCAL,
-                .port = a->sin6_port,
+                .port = bpf_ntohs(a->sin6_port),
             };
-            bpf_map_update_elem(&localhostmap, &key, &value, 0);
-            bpf_printk("geatu-net: localhost:%d left.\n", bpf_ntohs(a->sin6_port));
+            int ret = bpf_map_update_elem(&localhostmap, &key, &value, BPF_NOEXIST);
+            bpf_printk("geatu-net: [::1]:%d in.\n", bpf_ntohs(a->sin6_port));
+            if (!ret)
+            {
+                // Track for inode item.
+                struct inode *inode = sock->file->f_inode;
+                bpf_map_update_elem(&inode_addr_map, &inode, &key, 0);
+                bpf_printk("geatu-net: localhost:%d in.", key.port);
+            }
         }
     }
     return 0;
@@ -160,16 +170,32 @@ int BPF_PROG(socket_connect, struct socket *sock, struct sockaddr *addr, int add
         bpf_core_read(&a3, 4, a->sin6_addr.in6_u.u6_addr32 + 2);
         bpf_core_read(&a4, 4, a->sin6_addr.in6_u.u6_addr32 + 3);
         if (
-            a1 == 1 &&
+            a1 == 0 &&
             a2 == 0 &&
             a3 == 0 &&
-            a4 == 0 )
+            a4 == bpf_htonl(1))
         {
             struct localhost_h key = {
                 .addr = IPv6_LOCAL,
-                .port = a->sin6_port,
+                .port = bpf_ntohs(a->sin6_port),
             };
-            //bpf_map_update_elem(localmap, &key, &value, 0);
+            struct net_policy *policy = bpf_map_lookup_elem(&localhostmap, &key);
+            if (policy)
+            {
+                // Test
+                int uid = bpf_get_current_uid_gid() & 0xfffffffful;
+                // root access is unlimited.
+                if (uid != 0 && uid != policy->uid)
+                {
+                    bpf_printk("geatu-net: deny [::1]:%d\n", key.port);
+                    // Reject connection as if there are no server here.
+                    return -ECONNREFUSED;
+                }
+                else
+                {
+                    bpf_printk("geatu-net: allow [::1]:%d from %d to %d\n", key.port, uid, policy->uid);
+                }
+            }
         }
     }
     return 0;

@@ -3,6 +3,8 @@
 #define AF_INET 2
 #define AF_INET6 10
 
+#define XATTR_NAME "security.geatu1"
+
 enum {
     ENABLED = 0,
     // Connecting to endpoints on localhost applies to classic unix authentication.
